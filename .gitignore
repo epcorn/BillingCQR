@@ -1,0 +1,23 @@
+# Node modules
+node_modules/
+
+# Environment variables
+.env
+
+# Temporary or debug JS files
+temp.js
+temp1.js
+tempcopy.js
+db.js
+
+# Log files
+*.log
+
+# Build outputs (optional if you build frontend)
+dist/
+build/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
