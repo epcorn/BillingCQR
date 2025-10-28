@@ -10,7 +10,6 @@ const billingRoutes = require("./routes/billingRoutes");
 dotenv.config();
 
 // --- DATABASE CONNECTION ---
-// Removed deprecated options
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
@@ -21,40 +20,39 @@ mongoose
 
 const app = express();
 
-// --- CORS CONFIGURATION ---
+// --- CORS CONFIGURATION (MANUAL PREFLIGHT) ---
 
-// 1. Define your allowed origins
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://your-frontend-domain.onrender.com", // Your future deployed frontend
-];
+// 1. Manually handle ALL OPTIONS requests
+// This will intercept the 'OPTIONS /api/auth/login' request
+// before it can "fall through" and become a 404.
+// This MUST be the first middleware.
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    console.log("Manual OPTIONS handler triggered for:", req.path);
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization'); // Add any custom headers you use
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    // Send 204 (No Content) which is the standard for preflight
+    return res.status(204).send();
+  }
+  // Not an OPTIONS request, move to the next middleware
+  next();
+});
 
-// 2. Create the CORS options object
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-  methods: "GET,HEAD,PUT,PATCH,POST,DELETE", // Explicitly allow all methods
-  preflightContinue: false, // This is important: tells CORS to handle OPTIONS
-  optionsSuccessStatus: 204 // Send 204 for successful OPTIONS requests
-};
-
-// 3. THIS IS THE FIX:
-// We ONLY use `app.use(cors(corsOptions));`
-// This one line, when placed before the routes, will:
-//  a) Handle all preflight (OPTIONS) requests correctly.
-//  b) Add the 'Access-Control-Allow-Origin' header to all other requests.
-app.use(cors(corsOptions));
+// 2. Use the 'cors' middleware for all NON-OPTIONS requests
+// This will add the 'Access-Control-Allow-Origin' header to your
+// actual POST /login request.
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+  })
+);
 
 // --- MIDDLEWARE ---
+// This MUST come AFTER the cors middleware
 app.use(express.json());
 
 // --- TEST ROOT ROUTE ---
@@ -63,7 +61,7 @@ app.get("/", (req, res) => {
 });
 
 // --- ROUTES ---
-// Your routes will now be processed *after* CORS is fully configured.
+// These MUST come AFTER the cors and express.json middleware
 app.use("/api/auth", authRoutes);
 app.use("/api/activity", activityRoutes);
 app.use("/api/billing", billingRoutes);
