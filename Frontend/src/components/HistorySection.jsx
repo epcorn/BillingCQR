@@ -17,9 +17,13 @@ const HistorySection = () => {
           return;
         }
 
-        const res = await axios.get("http://localhost:5000/api/activity", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+const res = await axios.get(
+  `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"}/api/activity`,
+  {
+    headers: { Authorization: `Bearer ${token}` },
+  }
+);
+
 
         setActivities(Array.isArray(res.data) ? res.data : []);
       } catch (err) {

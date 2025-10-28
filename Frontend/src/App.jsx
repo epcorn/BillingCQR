@@ -17,13 +17,17 @@ function App() {
       const token = localStorage.getItem("token");
 
       if (token) {
-        await fetch("http://localhost:5000/api/auth/logout", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
+await fetch(
+  `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"}/api/auth/logout`,
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  }
+);
+
       }
 
       // Clear session data

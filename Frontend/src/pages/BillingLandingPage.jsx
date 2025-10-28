@@ -38,7 +38,9 @@ const BillingLandingPage = () => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const res = await axios.get(`http://localhost:5000/api/billing/due-cards?month=${month}&year=${year}`);
+const res = await axios.get(
+  `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"}/api/billing/due-cards?month=${month}&year=${year}`
+);
         setRows(res.data.data || []);
       } catch (err) {
         console.error("Error fetching due-cards:", err.message || err);
@@ -55,7 +57,9 @@ const BillingLandingPage = () => {
     let intervalId = null;
     const fetchAfterJobCards = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/billing/after-job?month=${month}&year=${year}`);
+const res = await axios.get(
+  `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"}/api/billing/after-job?month=${month}&year=${year}`
+);
         const raw = res.data?.data || [];
         setAfterJobCards(raw.map(ensureLabel));
       } catch (err) {
@@ -72,7 +76,9 @@ const BillingLandingPage = () => {
     if (activeTab === "afterJob") {
       (async () => {
         try {
-          const res = await axios.get(`http://localhost:5000/api/billing/after-job?month=${month}&year=${year}`);
+const res = await axios.get(
+  `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"}/api/billing/after-job?month=${month}&year=${year}`
+);
           setAfterJobCards(res.data?.data.map(ensureLabel) || []);
         } catch (err) {
           console.error("Error fetching after-job cards on tab switch:", err.message || err);
@@ -119,13 +125,20 @@ const BillingLandingPage = () => {
     formData.append("serviceId", serviceId);
 
     try {
-      await axios.post(`http://localhost:5000/api/billing/upload-bill`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+     await axios.post(
+  `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"}/api/billing/upload-bill`,
+  formData,
+  {
+    headers: { "Content-Type": "multipart/form-data" },
+  }
+);
+
       setUploadStatus(prev => ({ ...prev, [serviceId]: "success" }));
 
       if (activeTab === "afterJob") {
-        const res = await axios.get(`http://localhost:5000/api/billing/after-job?month=${month}&year=${year}`);
+const res = await axios.get(
+  `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"}/api/billing/after-job?month=${month}&year=${year}`
+);
         setAfterJobCards(res.data?.data.map(ensureLabel) || []);
       }
     } catch (error) {

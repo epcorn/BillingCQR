@@ -17,11 +17,14 @@ const MakeBillModal = ({ isOpen, onClose, rows, renderMedia }) => {
   // 🟢 Helper to log activity
   const logBillingActivity = async (actionType, contractNo = null, cardNo = null) => {
     try {
-      await axios.post(
-        "http://localhost:5000/api/activity",
-        { actionType, contractNo, cardNo },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+await axios.post(
+  `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"}/api/activity`,
+  { actionType, contractNo, cardNo },
+  {
+    headers: { Authorization: `Bearer ${token}` },
+  }
+);
+
     } catch (err) {
       console.error("Activity log failed:", err);
     }
@@ -71,10 +74,12 @@ const MakeBillModal = ({ isOpen, onClose, rows, renderMedia }) => {
     try {
       setUploading(true);
       const res = await axios.post(
-        "http://localhost:5000/api/billing/upload-bill",
-        formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
-      );
+  `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"}/api/billing/upload-bill`,
+  formData,
+  {
+    headers: { "Content-Type": "multipart/form-data" },
+  }
+);
 
       if (res.data.success) {
         setFileUploaded(true);
@@ -109,11 +114,15 @@ const MakeBillModal = ({ isOpen, onClose, rows, renderMedia }) => {
 
     try {
       setSendingEmail(true);
-      const res = await axios.post("http://localhost:5000/api/billing/send-bill-email", {
-        contractNo,
-        filePaths: uploadedBillPaths,
-        cardPaths: cardFiles,
-      });
+const res = await axios.post(
+  `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"}/api/billing/send-bill-email`,
+  {
+    contractNo,
+    filePaths: uploadedBillPaths,
+    cardPaths: cardFiles,
+  }
+);
+
 
       if (res.data.success) {
         alert(`Email sent successfully to client for Contract ${contractNo}.`);
