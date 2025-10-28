@@ -10,11 +10,9 @@ const billingRoutes = require("./routes/billingRoutes");
 dotenv.config();
 
 // --- DATABASE CONNECTION ---
+// Removed deprecated options: useNewUrlParser and useUnifiedTopology
 mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
   .catch((err) => {
     console.error("❌ MongoDB connection error:", err.message);
@@ -24,22 +22,14 @@ mongoose
 const app = express();
 
 // --- CORS CONFIGURATION ---
-const allowedOrigins = [
-  "http://localhost:5173", // local frontend (vite)
-  "https://billing-cqr.onrender.com", // backend on render
-  "https://your-frontend-domain.onrender.com", // future deployed frontend
-];
-
+// Simplified the origin configuration to use a direct array
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps or curl)
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(new Error("Not allowed by CORS"));
-    },
+    origin: [
+      "http://localhost:5173", // local frontend (vite)
+      "https://your-frontend-domain.onrender.com", // future deployed frontend
+      // Note: You don't need to include your backend URL (billingcqr.onrender.com) here.
+    ],
     credentials: true,
   })
 );
