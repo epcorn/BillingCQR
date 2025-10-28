@@ -1,6 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
-const cors = require("cors");
+// We are no longer using the cors package, so you could even remove this line
+const cors = require("cors"); 
 const mongoose = require("mongoose");
 
 const authRoutes = require("./routes/authRoutes");
@@ -20,39 +21,34 @@ mongoose
 
 const app = express();
 
-// --- CORS CONFIGURATION (MANUAL PREFLIGHT) ---
-
-// 1. Manually handle ALL OPTIONS requests
-// This will intercept the 'OPTIONS /api/auth/login' request
-// before it can "fall through" and become a 404.
+// --- CUSTOM ALL-IN-ONE CORS HANDLER ---
 // This MUST be the first middleware.
 app.use((req, res, next) => {
+  // Set the allowed origin. Be very specific.
+  // This header is set for ALL requests.
+  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
+  
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization'); // Add any custom headers you use
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+  // Check if it's a preflight (OPTIONS) request
   if (req.method === 'OPTIONS') {
-    console.log("Manual OPTIONS handler triggered for:", req.path);
-    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization'); // Add any custom headers you use
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    // Send 204 (No Content) which is the standard for preflight
+    console.log("Custom CORS handler: Intercepted OPTIONS request for:", req.path);
+    // End the request here with a 204 success code
     return res.status(204).send();
   }
-  // Not an OPTIONS request, move to the next middleware
+
+  // Not an OPTIONS request, move to the next middleware (express.json, routes, etc.)
+  console.log("Custom CORS handler: Passed through request for:", req.path);
   next();
 });
 
-// 2. Use the 'cors' middleware for all NON-OPTIONS requests
-// This will add the 'Access-Control-Allow-Origin' header to your
-// actual POST /login request.
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-    credentials: true,
-    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-  })
-);
+// We no longer need the separate app.use(cors(...))
+// (The middleware above handles everything)
 
 // --- MIDDLEWARE ---
-// This MUST come AFTER the cors middleware
+// This MUST come AFTER our custom CORS handler
 app.use(express.json());
 
 // --- TEST ROOT ROUTE ---
@@ -61,7 +57,7 @@ app.get("/", (req, res) => {
 });
 
 // --- ROUTES ---
-// These MUST come AFTER the cors and express.json middleware
+// These MUST come AFTER our custom CORS handler and express.json
 app.use("/api/auth", authRoutes);
 app.use("/api/activity", activityRoutes);
 app.use("/api/billing", billingRoutes);
