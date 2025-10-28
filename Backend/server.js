@@ -50,7 +50,7 @@ const corsOptions = {
 // 3. THIS IS THE FIX:
 // Explicitly handle preflight (OPTIONS) requests for ALL routes
 // This will intercept that `OPTIONS /api/auth/login` request.
-app.options('*', cors(corsOptions)); 
+app.options('/', cors(corsOptions)); 
 
 // 4. Then, use CORS for all other requests
 app.use(cors(corsOptions));
