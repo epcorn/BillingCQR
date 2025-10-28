@@ -1,10 +1,24 @@
 const BillingUser = require('../models/BillingUser');
+const BillingActivity = require('../models/BillingActivity');
 const jwt = require('jsonwebtoken');
-const { logBillingActivity } = require('../utils/logBillingActivity'); // Adjust path
 
 // Generate JWT
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+};
+
+// Helper function to log activity
+const logBillingActivity = async (user, actionType) => {
+    try {
+        await BillingActivity.create({
+            userId: user._id,
+            userName: user.name,
+            userEmail: user.email,
+            actionType
+        });
+    } catch (err) {
+        console.error("Failed to log activity:", err);
+    }
 };
 
 // Login Controller
@@ -19,11 +33,7 @@ exports.login = async (req, res) => {
         if (!isMatch) return res.status(401).json({ msg: "Invalid email or password" });
 
         // --- Log login activity ---
-        await logBillingActivity({
-            userId: user._id,
-            actionType: "login",
-            additionalInfo: `User logged in at ${new Date().toISOString()}`
-        });
+        await logBillingActivity(user, "login");
 
         const token = generateToken(user._id);
 
@@ -45,14 +55,11 @@ exports.login = async (req, res) => {
 // Logout Controller
 exports.logout = async (req, res) => {
     try {
-        const userId = req.user?.id; // Set by auth middleware
-        if (!userId) return res.status(400).json({ msg: "User not identified" });
+        const user = req.user; // Set by auth middleware
+        if (!user) return res.status(400).json({ msg: "User not identified" });
 
-        await logBillingActivity({
-            userId,
-            actionType: "logout",
-            additionalInfo: `User logged out at ${new Date().toISOString()}`
-        });
+        // --- Log logout activity ---
+        await logBillingActivity(user, "logout");
 
         res.json({ success: true, msg: "Logout logged successfully" });
     } catch (err) {

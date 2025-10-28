@@ -4,12 +4,28 @@ import axios from "axios";
 const MakeBillModal = ({ isOpen, onClose, rows, renderMedia }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredCards, setFilteredCards] = useState([]);
-  const [selectedFiles, setSelectedFiles] = useState(null); // Will hold a FileList
+  const [selectedFiles, setSelectedFiles] = useState(null);
   const [fileUploaded, setFileUploaded] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
-  const [uploadedBillPaths, setUploadedBillPaths] = useState([]); // <-- UPDATED state
+  const [uploadedBillPaths, setUploadedBillPaths] = useState([]);
   const [cardFiles, setCardFiles] = useState([]);
+
+  // 🟢 Added for tracking
+  const token = localStorage.getItem("token");
+
+  // 🟢 Helper to log activity
+  const logBillingActivity = async (actionType, contractNo = null, cardNo = null) => {
+    try {
+      await axios.post(
+        "http://localhost:5000/api/activity",
+        { actionType, contractNo, cardNo },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    } catch (err) {
+      console.error("Activity log failed:", err);
+    }
+  };
 
   // 🔍 Filter cards by contract number
   useEffect(() => {
@@ -46,9 +62,8 @@ const MakeBillModal = ({ isOpen, onClose, rows, renderMedia }) => {
     const contractNo = filteredCards[0].contractNo;
     const formData = new FormData();
 
-    // Loop and append all files
     for (let i = 0; i < selectedFiles.length; i++) {
-      formData.append("billFiles", selectedFiles[i]); // "billFiles" (plural)
+      formData.append("billFiles", selectedFiles[i]);
     }
 
     formData.append("contractNo", contractNo);
@@ -63,9 +78,12 @@ const MakeBillModal = ({ isOpen, onClose, rows, renderMedia }) => {
 
       if (res.data.success) {
         setFileUploaded(true);
-        setUploadedBillPaths(res.data.billPaths || []); // <-- UPDATED
+        setUploadedBillPaths(res.data.billPaths || []);
         setCardFiles(res.data.cardPaths || []);
         alert("Files uploaded successfully!");
+
+        // 🟢 Track upload action
+        await logBillingActivity("upload_bill", contractNo);
       } else {
         alert("File upload failed.");
       }
@@ -79,7 +97,7 @@ const MakeBillModal = ({ isOpen, onClose, rows, renderMedia }) => {
 
   // ✉️ Send Email Handler
   const handleSendEmail = async () => {
-    if (!fileUploaded || uploadedBillPaths.length === 0) { // <-- UPDATED check
+    if (!fileUploaded || uploadedBillPaths.length === 0) {
       alert("Please upload the bill file(s) before sending the email.");
       return;
     }
@@ -91,17 +109,16 @@ const MakeBillModal = ({ isOpen, onClose, rows, renderMedia }) => {
 
     try {
       setSendingEmail(true);
-      const res = await axios.post(
-        "http://localhost:5000/api/billing/send-bill-email",
-        {
-          contractNo,
-          filePaths: uploadedBillPaths, // <-- UPDATED key (plural)
-          cardPaths: cardFiles,
-        }
-      );
+      const res = await axios.post("http://localhost:5000/api/billing/send-bill-email", {
+        contractNo,
+        filePaths: uploadedBillPaths,
+        cardPaths: cardFiles,
+      });
 
       if (res.data.success) {
         alert(`Email sent successfully to client for Contract ${contractNo}.`);
+        // 🟢 Track send email
+        await logBillingActivity("send_email", contractNo);
       } else {
         alert("Failed to send email.");
       }
@@ -113,31 +130,34 @@ const MakeBillModal = ({ isOpen, onClose, rows, renderMedia }) => {
     }
   };
 
-  // Force download helper
-  const downloadFile = (filePath, fileName) => {
-    // Helper function to extract filename if not provided
-    const getFileName = (path, fallback) => {
+  // 🟢 Modified: Track front/back downloads
+  const downloadFile = async (filePath, fileName, contractNo, cardNo, actionType) => {
+    try {
+      const getFileName = (path, fallback) => {
         if (fileName) return fileName;
         if (path) {
-            const parts = path.split('/');
-            return parts[parts.length - 1];
+          const parts = path.split("/");
+          return parts[parts.length - 1];
         }
         return fallback;
-    }
+      };
 
-    fetch(filePath)
-      .then(res => res.blob())
-      .then(blob => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = getFileName(filePath, "download"); // Use dynamic name
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-      })
-      .catch(err => console.error("Download error:", err));
+      const res = await fetch(filePath);
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = getFileName(filePath, "download");
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      // 🟢 Track download
+      await logBillingActivity(actionType, contractNo, cardNo);
+    } catch (err) {
+      console.error("Download error:", err);
+    }
   };
 
   if (!isOpen) return null;
@@ -163,8 +183,8 @@ const MakeBillModal = ({ isOpen, onClose, rows, renderMedia }) => {
                 setSearchTerm(e.target.value);
                 setFileUploaded(false);
                 setSelectedFiles(null);
-                setUploadedBillPaths([]); // Reset on new search
-                setCardFiles([]); // Reset on new search
+                setUploadedBillPaths([]);
+                setCardFiles([]);
               }}
               style={styles.searchInput}
               autoFocus
@@ -173,7 +193,7 @@ const MakeBillModal = ({ isOpen, onClose, rows, renderMedia }) => {
 
           <div style={styles.resultsContainer}>
             {searchTerm && filteredCards.length > 0 ? (
-              filteredCards.map((card) => (
+              filteredCards.map((card, index) => (
                 <div key={card.serviceId} style={styles.cardItem}>
                   <strong style={styles.cardLabel}>{card.serviceCardLabel}</strong>
                   <div style={styles.imagePair}>
@@ -183,7 +203,13 @@ const MakeBillModal = ({ isOpen, onClose, rows, renderMedia }) => {
                       <button
                         style={styles.downloadBtn}
                         onClick={() =>
-                          downloadFile(card.cardFrontImage, card.cardFrontImage.split('/').pop())
+                          downloadFile(
+                            card.cardFrontImage,
+                            card.cardFrontImage.split("/").pop(),
+                            card.contractNo,
+                            `${index + 1}/2`,
+                            "download_front"
+                          )
                         }
                       >
                         Download Front
@@ -195,7 +221,13 @@ const MakeBillModal = ({ isOpen, onClose, rows, renderMedia }) => {
                       <button
                         style={styles.downloadBtn}
                         onClick={() =>
-                          downloadFile(card.cardBackImage, card.cardBackImage.split('/').pop())
+                          downloadFile(
+                            card.cardBackImage,
+                            card.cardBackImage.split("/").pop(),
+                            card.contractNo,
+                            `${index + 1}/2`,
+                            "download_back"
+                          )
                         }
                       >
                         Download Back
@@ -218,18 +250,16 @@ const MakeBillModal = ({ isOpen, onClose, rows, renderMedia }) => {
           </div>
         </div>
 
-        {/* --- MODAL FOOTER --- */}
         {filteredCards.length > 0 && (
           <div style={styles.modalFooter}>
             <input
               type="file"
               accept=".pdf,.jpg,.jpeg,.png,.docx"
-              onChange={(e) => setSelectedFiles(e.target.files)} // Get FileList
+              onChange={(e) => setSelectedFiles(e.target.files)}
               style={styles.fileInput}
-              multiple // Allow multiple files
+              multiple
             />
 
-            {/* Show how many files are selected */}
             {selectedFiles && selectedFiles.length > 0 && (
               <span style={{ fontSize: "12px", color: "#6c757d", marginRight: "auto" }}>
                 {selectedFiles.length} file(s) selected
@@ -265,6 +295,9 @@ const MakeBillModal = ({ isOpen, onClose, rows, renderMedia }) => {
     </div>
   );
 };
+
+
+
 
 // --- Styles ---
 const styles = {

@@ -1,8 +1,16 @@
 console.log("✅ [Controller] billingController.js file was read.");
 
-const { 
-    startOfMonth, endOfMonth, startOfDay, endOfDay, startOfWeek, endOfWeek, 
-    addDays, addMonths, differenceInCalendarMonths, getDay 
+const {
+    startOfMonth,
+    endOfMonth,
+    startOfDay,
+    endOfDay,
+    startOfWeek,
+    endOfWeek,
+    addDays,
+    addMonths,
+    differenceInCalendarMonths,
+    getDay
 } = require("date-fns");
 
 const Service = require("../models/Service");
@@ -25,6 +33,7 @@ const calculateSearchWindow = (service, viewingMonth, viewingYear) => {
         case "Monthly":
         case "Thrice A Month":
         case "As An When Called":
+            // normal month range
             break;
         case "Alternate Monthly": {
             const monthDiff = differenceInCalendarMonths(viewingDate, contractStartDate);
@@ -108,7 +117,8 @@ exports.getDueBillingCards = async (req, res) => {
             }).sort({ serviceDate: -1 });
 
             const contract = service.contract;
-            const totalCards = contract.services.length;
+            const totalCards = (contract.services && contract.services.length) ? contract.services.length : 0;
+
             responseData.push({
                 serviceId: service._id,
                 contractId: contract._id,
@@ -116,8 +126,14 @@ exports.getDueBillingCards = async (req, res) => {
                 serviceCardNumber: service.serviceCardNumber,
                 totalCardsInContract: totalCards,
                 serviceCardLabel: `${contract.contractNo} (${service.serviceCardNumber}/${totalCards})`,
+                // keep the existing name fields
                 billTo: contract.billToAddress?.name || "",
                 shipTo: contract.shipToAddress?.name || "",
+                // NEW: include address1/address2 for both billTo and shipTo
+                billToAddress1: contract.billToAddress?.address1 || "",
+                billToAddress2: contract.billToAddress?.address2 || "",
+                shipToAddress1: contract.shipToAddress?.address1 || "",
+                shipToAddress2: contract.shipToAddress?.address2 || "",
                 frequency: service.frequency,
                 cardFrontImage: service.card || null,
                 cardBackImage: latestReportInPeriod?.image?.[0] || null,
@@ -155,7 +171,7 @@ exports.getAfterJobCards = async (req, res) => {
         const responseData = [];
 
         for (const contract of contracts) {
-            const totalCards = contract.services.length;
+            const totalCards = (contract.services && contract.services.length) ? contract.services.length : 0;
 
             for (const service of contract.services) {
                 const searchStart = new Date(Date.UTC(yearInt, monthInt - 1, 1, 0, 0, 0));
@@ -177,6 +193,10 @@ exports.getAfterJobCards = async (req, res) => {
                     serviceCardLabel: `${contract.contractNo} (${service.serviceCardNumber}/${totalCards})`,
                     billTo: contract.billToAddress?.name || "",
                     shipTo: contract.shipToAddress?.name || "",
+                    billToAddress1: contract.billToAddress?.address1 || "",
+                    billToAddress2: contract.billToAddress?.address2 || "",
+                    shipToAddress1: contract.shipToAddress?.address1 || "",
+                    shipToAddress2: contract.shipToAddress?.address2 || "",
                     frequency: "Bill After Job",
                     cardFrontImage: service.card || null,
                     cardBackImage: latestReport.image?.[0] || null,

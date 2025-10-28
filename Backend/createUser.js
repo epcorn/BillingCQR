@@ -1,47 +1,52 @@
-import mongoose from "mongoose";
-import dotenv from "dotenv";
-import User from "./models/BillingUser.js"; // adjust path if needed
+require('dotenv').config();
+const mongoose = require('mongoose');
+const BillingUser = require('../Backend/models/BillingUser'); // Import your model
 
-dotenv.config();
-
-const createUser = async () => {
+async function createUser() {
   try {
-    await mongoose.connect(process.env.MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    // Connect to MongoDB using URI from .env
+    const mongoUri = process.env.MONGO_URI;
+    if (!mongoUri) {
+      throw new Error('❌ MONGO_URI not found in .env file');
+    }
 
-    const name = "chirag";
-    const email = "chirag@epcorn.com";
-    const password = "123456"; // plaintext!
-    const role = "admin";
+    await mongoose.connect(mongoUri);
+    console.log('✅ Connected to MongoDB');
+
+    // Fixed user data
+    const userData = {
+      name: '',
+      email: '',
+      password: '',
+      role: '',
+    };
 
     // Check if user already exists
-    const existing = await User.findOne({ email });
-    if (existing) {
-      console.log("❌ User already exists with that email");
+    const existingUser = await BillingUser.findOne({ email: userData.email });
+    if (existingUser) {
+      console.log('⚠️ User already exists with this email.');
+      await mongoose.disconnect();
       process.exit(0);
     }
 
-    const user = await User.create({
-      name,
-      email,
-      password, // <-- do NOT hash manually
-      role,
-    });
+    // Create and save new user
+    const newUser = new BillingUser(userData);
+    await newUser.save();
 
-    console.log("✅ User created successfully:");
+    console.log('🎉 User created successfully:');
     console.log({
-      name: user.name,
-      email: user.email,
-      role: user.role,
+      id: newUser._id,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role
     });
 
-    process.exit(0);
   } catch (error) {
-    console.error("❌ Error creating user:", error);
-    process.exit(1);
+    console.error('❌ Error creating user:', error.message);
+  } finally {
+    await mongoose.disconnect();
+    console.log('🔌 Disconnected from MongoDB');
   }
-};
+}
 
 createUser();

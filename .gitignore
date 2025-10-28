@@ -9,6 +9,7 @@ temp.js
 temp1.js
 tempcopy.js
 db.js
+createuser.js
 
 # Log files
 *.log

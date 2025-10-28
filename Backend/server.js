@@ -3,6 +3,8 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const authRoutes = require('./routes/authRoutes');
+const activityRoutes = require("./routes/activityRoutes");
+
 
 dotenv.config();
 
@@ -43,6 +45,8 @@ app.use("/api/billing", require("./routes/billingRoutes"));
 console.log("✅ [Server] Billing routes registered to /api/billing"); // <-- ADD THIS LINE
 
 app.use('/api/auth',authRoutes);
+app.use("/api/activity", activityRoutes);
+
 // This is the corrected code
 app.use("/uploads", cors(), express.static("uploads"));
 // --- SERVER LISTENER ---
