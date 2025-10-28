@@ -43,18 +43,16 @@ const corsOptions = {
   },
   credentials: true,
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE", // Explicitly allow all methods
-  preflightContinue: false,
+  preflightContinue: false, // This is important: tells CORS to handle OPTIONS
   optionsSuccessStatus: 204 // Send 204 for successful OPTIONS requests
 };
 
 // 3. THIS IS THE FIX:
-// Explicitly handle preflight (OPTIONS) requests for ALL routes
-// This will intercept that `OPTIONS /api/auth/login` request.
-app.options('/', cors(corsOptions)); 
-
-// 4. Then, use CORS for all other requests
+// We ONLY use `app.use(cors(corsOptions));`
+// This one line, when placed before the routes, will:
+//  a) Handle all preflight (OPTIONS) requests correctly.
+//  b) Add the 'Access-Control-Allow-Origin' header to all other requests.
 app.use(cors(corsOptions));
-
 
 // --- MIDDLEWARE ---
 app.use(express.json());
