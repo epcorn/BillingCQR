@@ -10,7 +10,7 @@ const billingRoutes = require("./routes/billingRoutes");
 dotenv.config();
 
 // --- DATABASE CONNECTION ---
-// Removed deprecated options: useNewUrlParser and useUnifiedTopology
+// Removed deprecated options
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
@@ -22,17 +22,39 @@ mongoose
 const app = express();
 
 // --- CORS CONFIGURATION ---
-// Simplified the origin configuration to use a direct array
-app.use(
-  cors({
-    origin: [
-      "http://localhost:5173", // local frontend (vite)
-      "https://your-frontend-domain.onrender.com", // future deployed frontend
-      // Note: You don't need to include your backend URL (billingcqr.onrender.com) here.
-    ],
-    credentials: true,
-  })
-);
+
+// 1. Define your allowed origins
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://your-frontend-domain.onrender.com", // Your future deployed frontend
+];
+
+// 2. Create the CORS options object
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE", // Explicitly allow all methods
+  preflightContinue: false,
+  optionsSuccessStatus: 204 // Send 204 for successful OPTIONS requests
+};
+
+// 3. THIS IS THE FIX:
+// Explicitly handle preflight (OPTIONS) requests for ALL routes
+// This will intercept that `OPTIONS /api/auth/login` request.
+app.options('*', cors(corsOptions)); 
+
+// 4. Then, use CORS for all other requests
+app.use(cors(corsOptions));
+
 
 // --- MIDDLEWARE ---
 app.use(express.json());
@@ -43,6 +65,7 @@ app.get("/", (req, res) => {
 });
 
 // --- ROUTES ---
+// Your routes will now be processed *after* CORS is fully configured.
 app.use("/api/auth", authRoutes);
 app.use("/api/activity", activityRoutes);
 app.use("/api/billing", billingRoutes);
@@ -51,3 +74,4 @@ app.use("/uploads", express.static("uploads"));
 // --- SERVER LISTENER ---
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
